@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -26,14 +27,21 @@ func main() {
 
 	defer conn.Close()
 
-	var b []byte
+	// Create a buffer to read data to
+	b := make([]byte, 64)
 
-	_, err = conn.Read(b)
-	if err != nil {
-		fmt.Println("Error reading bytes from connection")
-		// Should I exit or should I just log the error?
-		os.Exit(1)
+	for {
+		bc, err := conn.Read(b)
+		fmt.Println("Read some bytes", bc, string(b))
+		if err != nil {
+			fmt.Println("Error reading bytes from connection")
+			// Assume connection was closed and just continue
+			break
+		}
+
+		// Right now we are ignoring everything and just waiting until the end of line
+		if bytes.Contains(b, []byte("\n")) {
+			conn.Write([]byte(pong))
+		}
 	}
-
-	conn.Write([]byte(pong))
 }
