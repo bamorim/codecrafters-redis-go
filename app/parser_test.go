@@ -1,4 +1,4 @@
-package parser
+package main
 
 import (
 	"bufio"
@@ -8,7 +8,7 @@ import (
 
 func TestParseSimpleString(t *testing.T) {
 	input := strings.NewReader("+PING\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)
@@ -18,7 +18,7 @@ func TestParseSimpleString(t *testing.T) {
 
 func TestParseSimpleError(t *testing.T) {
 	input := strings.NewReader("-ERR something wrong\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)
@@ -28,7 +28,7 @@ func TestParseSimpleError(t *testing.T) {
 
 func TestParseInteger(t *testing.T) {
 	input := strings.NewReader(":1234\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)
@@ -38,7 +38,7 @@ func TestParseInteger(t *testing.T) {
 
 func TestParseBulkString(t *testing.T) {
 	input := strings.NewReader("$10\r\nhello\r\n123\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)
@@ -48,7 +48,7 @@ func TestParseBulkString(t *testing.T) {
 
 func TestParseNullBulkString(t *testing.T) {
 	input := strings.NewReader("$-1\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)
@@ -57,7 +57,7 @@ func TestParseNullBulkString(t *testing.T) {
 
 func TestParseEmptyBulkString(t *testing.T) {
 	input := strings.NewReader("$0\r\n\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)
@@ -67,7 +67,7 @@ func TestParseEmptyBulkString(t *testing.T) {
 
 func TestParseArray(t *testing.T) {
 	input := strings.NewReader("*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)
@@ -85,7 +85,7 @@ func TestParseArray(t *testing.T) {
 
 func TestParseNullArray(t *testing.T) {
 	input := strings.NewReader("*-1\r\n")
-	reader := *bufio.NewReader(input)
+	reader := bufio.NewReader(input)
 	result, error := Parse(reader)
 
 	refuteError(t, error)

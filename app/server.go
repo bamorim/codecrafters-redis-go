@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"net"
@@ -16,8 +17,12 @@ func handleConnection(conn net.Conn) {
 	b := make([]byte, 64)
 
 	for {
-		bc, err := conn.Read(b)
-		fmt.Println("Read some bytes", bc, string(b))
+		reader := bufio.NewReader(conn)
+
+		value, err := Parse(reader)
+
+		fmt.Printf("Received Value: %#v\n", value)
+
 		if err != nil {
 			fmt.Println("Error reading bytes from connection")
 			// Assume connection was closed and just continue

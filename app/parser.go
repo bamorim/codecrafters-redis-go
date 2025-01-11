@@ -1,4 +1,4 @@
-package parser
+package main
 
 import (
 	"bufio"
@@ -221,6 +221,6 @@ func parseValue(reader *bufio.Reader) (Value, error) {
 	return Value{}, fmt.Errorf("Invalid value prefix: %c", next[0])
 }
 
-func Parse(reader bufio.Reader) (Value, error) {
-	return parseValue(&reader)
+func Parse(reader *bufio.Reader) (Value, error) {
+	return parseValue(reader)
 }
