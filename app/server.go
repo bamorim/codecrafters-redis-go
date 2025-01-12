@@ -38,34 +38,50 @@ func processCommand(w io.Writer, message Value) error {
 		return error
 	}
 
-	switch command {
-	case "PING":
-		Write(w, NewSimpleString("PONG"))
-	case "ECHO":
-		Write(w, NewArray(args))
-	default:
-		Write(w, NewSimpleError("ERR undefined command"))
+	response := responseFor(command, args)
+
+	if error := Write(w, response); error != nil {
+		return error
 	}
 
 	return nil
 }
 
-func normalizeCommand(message Value) (string, []Value, error) {
+func responseFor(command string, args []string) Value {
+	switch command {
+	case "PING":
+		return NewSimpleString("PONG")
+	case "ECHO":
+		if len(args) != 1 {
+			return NewSimpleError("ERR ECHO expects exactly one argument")
+		}
+		return NewBulkString(args[0])
+	}
+	return NewSimpleError("ERR undefined command")
+}
+
+func normalizeCommand(message Value) (string, []string, error) {
 	if message.Type != ArrayType {
-		return "", []Value{}, fmt.Errorf("command is not an array")
+		return "", []string{}, fmt.Errorf("command is not an array")
 	}
 
 	if len(message.Values) < 1 {
-		return "", []Value{}, fmt.Errorf("command array is empty")
+		return "", []string{}, fmt.Errorf("command array is empty")
 	}
 
 	for _, value := range message.Values {
 		if value.Type != BulkStringType {
-			return "", []Value{}, fmt.Errorf("command argument is not a BulkString")
+			return "", []string{}, fmt.Errorf("command argument is not a BulkString")
 		}
 	}
 
-	return message.Values[0].String, message.Values[1:], nil
+	arguments := make([]string, len(message.Values)-1)
+
+	for i, value := range message.Values[1:] {
+		arguments[i] = value.String
+	}
+
+	return message.Values[0].String, arguments, nil
 }
 
 func main() {
