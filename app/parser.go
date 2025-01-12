@@ -7,73 +7,6 @@ import (
 	"strings"
 )
 
-type ValueType int
-
-//go:generate stringer -type=ValueType
-const (
-	SimpleStringType ValueType = iota
-	SimpleErrorType
-	IntegerType
-	NullBulkStringType
-	BulkStringType
-	NullArrayType
-	ArrayType
-)
-
-type Value struct {
-	Type    ValueType
-	Integer int64
-	String  string
-	Values  []Value
-}
-
-func NewInteger(i int64) Value {
-	return Value{
-		Type:    IntegerType,
-		Integer: i,
-	}
-}
-
-func NewSimpleString(s string) Value {
-	return Value{
-		Type:   SimpleStringType,
-		String: s,
-	}
-}
-
-func NewErrorString(s string) Value {
-	return Value{
-		Type:   SimpleErrorType,
-		String: s,
-	}
-}
-
-func NewBulkString(s string) Value {
-	return Value{
-		Type:   BulkStringType,
-		String: s,
-	}
-}
-
-func NewNullBulkString() Value {
-	return Value{
-		Type: NullBulkStringType,
-	}
-}
-
-func NewArray(values []Value) Value {
-	return Value{
-		Type:   ArrayType,
-		Values: values,
-	}
-}
-
-func NewNullArray() Value {
-	return Value{
-		Type: NullArrayType,
-	}
-}
-
 func expect(reader *bufio.Reader, byte byte) error {
 	next, error := reader.ReadByte()
 
@@ -124,7 +57,7 @@ func parseErrorString(reader *bufio.Reader) (Value, error) {
 		return Value{}, error
 	}
 
-	return NewErrorString(string), nil
+	return NewSimpleError(string), nil
 }
 
 func parseInteger(reader *bufio.Reader) (Value, error) {
@@ -202,7 +135,7 @@ func parseArray(reader *bufio.Reader) (Value, error) {
 func parseValue(reader *bufio.Reader) (Value, error) {
 	next, error := reader.Peek(1)
 	if error != nil {
-		return Value{}, nil
+		return Value{}, error
 	}
 
 	switch next[0] {
@@ -218,7 +151,7 @@ func parseValue(reader *bufio.Reader) (Value, error) {
 		return parseArray(reader)
 	}
 
-	return Value{}, fmt.Errorf("Invalid value prefix: %c", next[0])
+	return Value{}, fmt.Errorf("invalid value prefix: %c", next[0])
 }
 
 func Parse(reader *bufio.Reader) (Value, error) {

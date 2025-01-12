@@ -2,8 +2,8 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"os"
 )
@@ -13,27 +13,59 @@ const pong = "+PONG\r\n"
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// Create a buffer to read data to
-	b := make([]byte, 64)
-
 	for {
 		reader := bufio.NewReader(conn)
 
-		value, err := Parse(reader)
-
-		fmt.Printf("Received Value: %#v\n", value)
-
+		message, err := Parse(reader)
 		if err != nil {
-			fmt.Println("Error reading bytes from connection")
+			fmt.Println("Error reading message from connection")
 			// Assume connection was closed and just continue
+			// TODO: Probably we should fallback to the telnet protocol version (inline commands)
 			break
 		}
 
-		// Right now we are ignoring everything and just waiting until the end of line
-		if bytes.Contains(b, []byte("\n")) {
-			conn.Write([]byte(pong))
+		if error := processCommand(conn, message); error != nil {
+			fmt.Println("Could not process command")
+			break
 		}
 	}
+}
+
+func processCommand(w io.Writer, message Value) error {
+	command, args, error := normalizeCommand(message)
+
+	if error != nil {
+		return error
+	}
+
+	switch command {
+	case "PING":
+		Write(w, NewSimpleString("PONG"))
+	case "ECHO":
+		Write(w, NewArray(args))
+	default:
+		Write(w, NewSimpleError("ERR undefined command"))
+	}
+
+	return nil
+}
+
+func normalizeCommand(message Value) (string, []Value, error) {
+	if message.Type != ArrayType {
+		return "", []Value{}, fmt.Errorf("command is not an array")
+	}
+
+	if len(message.Values) < 1 {
+		return "", []Value{}, fmt.Errorf("command array is empty")
+	}
+
+	for _, value := range message.Values {
+		if value.Type != BulkStringType {
+			return "", []Value{}, fmt.Errorf("command argument is not a BulkString")
+		}
+	}
+
+	return message.Values[0].String, message.Values[1:], nil
 }
 
 func main() {

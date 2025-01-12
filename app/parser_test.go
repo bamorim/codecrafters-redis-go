@@ -92,9 +92,23 @@ func TestParseNullArray(t *testing.T) {
 	assertType(t, result, NullArrayType)
 }
 
+func TestParseEmptyInputFail(t *testing.T) {
+	input := strings.NewReader("")
+	reader := bufio.NewReader(input)
+	_, error := Parse(reader)
+
+	assertError(t, error)
+}
+
 func refuteError(t *testing.T, error error) {
 	if error != nil {
 		t.Fatalf("Expected parse to not return error, got %#v", error)
+	}
+}
+
+func assertError(t *testing.T, error error) {
+	if error == nil {
+		t.Fatal("Expected parse to return error")
 	}
 }
 
