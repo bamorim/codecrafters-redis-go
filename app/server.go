@@ -14,8 +14,9 @@ import (
 
 type Entry struct {
 	ExpiresAt time.Time
-	Expires   bool
-	Value     Value
+	// Use negated value to exploit zero-value so a zero value entry is expired
+	Infinite bool
+	Value    Value
 }
 
 type Memory struct {
@@ -37,7 +38,7 @@ func (memory *Memory) Set(key string, entry Entry) {
 func (memory *Memory) Get(key string) Value {
 	entry := memory.KV[key]
 
-	if !entry.Expires || entry.ExpiresAt.After(time.Now()) {
+	if entry.Infinite || entry.ExpiresAt.After(time.Now()) {
 		return memory.KV[key].Value
 	} else {
 		return NewNullBulkString()
@@ -99,7 +100,7 @@ func responseFor(command string, args []string) Value {
 
 		// Required args
 		key := args[0]
-		entry := Entry{Value: NewBulkString(args[1])}
+		entry := Entry{Value: NewBulkString(args[1]), Infinite: true}
 
 		// Parse optional args
 		for i := 2; i < len(args); i++ {
@@ -115,7 +116,7 @@ func responseFor(command string, args []string) Value {
 					return NewSimpleError("ERR SET PX option argument must be a positive integer")
 				}
 
-				entry.Expires = true
+				entry.Infinite = false
 				entry.ExpiresAt = time.Now().Add(time.Millisecond * time.Duration(px))
 			}
 		}
