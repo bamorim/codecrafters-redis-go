@@ -6,9 +6,30 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 )
 
-const pong = "+PONG\r\n"
+type Memory struct {
+	l  sync.Mutex
+	kv map[string]Value
+}
+
+func (memory *Memory) Init() {
+	memory.kv = make(map[string]Value)
+}
+
+func (memory *Memory) Set(key string, value Value) {
+	memory.l.Lock()
+	defer memory.l.Unlock()
+
+	memory.kv[key] = value
+}
+
+func (memory *Memory) Get(key string) Value {
+	return memory.kv[key]
+}
+
+var memory Memory
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
@@ -56,6 +77,20 @@ func responseFor(command string, args []string) Value {
 			return NewSimpleError("ERR ECHO expects exactly one argument")
 		}
 		return NewBulkString(args[0])
+	case "SET":
+		if len(args) < 2 {
+			return NewSimpleError("ERR SET requires key and value")
+		}
+
+		memory.Set(args[0], NewBulkString(args[1]))
+
+		return NewSimpleString("OK")
+	case "GET":
+		if len(args) < 1 {
+			return NewSimpleError("ERR GET requires key")
+		}
+
+		return memory.Get(args[0])
 	}
 	return NewSimpleError("ERR undefined command")
 }
@@ -85,6 +120,9 @@ func normalizeCommand(message Value) (string, []string, error) {
 }
 
 func main() {
+	// Initialize the shared memory
+	memory.Init()
+
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
