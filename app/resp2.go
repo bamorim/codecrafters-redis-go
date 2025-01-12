@@ -4,11 +4,10 @@ type ValueType int
 
 //go:generate stringer -type=ValueType
 const (
-	// NullBulkString should be the zero value to make it easier to deal with nulls
-	NullBulkStringType ValueType = iota
-	SimpleStringType
+	SimpleStringType ValueType = iota
 	SimpleErrorType
 	IntegerType
+	NullBulkStringType
 	BulkStringType
 	NullArrayType
 	ArrayType

@@ -6,27 +6,42 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 )
 
+type Entry struct {
+	ExpiresAt time.Time
+	Expires   bool
+	Value     Value
+}
+
 type Memory struct {
-	l  sync.Mutex
-	kv map[string]Value
+	Lock sync.Mutex
+	KV   map[string]Entry
 }
 
 func (memory *Memory) Init() {
-	memory.kv = make(map[string]Value)
+	memory.KV = make(map[string]Entry)
 }
 
-func (memory *Memory) Set(key string, value Value) {
-	memory.l.Lock()
-	defer memory.l.Unlock()
+func (memory *Memory) Set(key string, entry Entry) {
+	memory.Lock.Lock()
+	defer memory.Lock.Unlock()
 
-	memory.kv[key] = value
+	memory.KV[key] = entry
 }
 
 func (memory *Memory) Get(key string) Value {
-	return memory.kv[key]
+	entry := memory.KV[key]
+
+	if !entry.Expires || entry.ExpiresAt.After(time.Now()) {
+		return memory.KV[key].Value
+	} else {
+		return NewNullBulkString()
+	}
 }
 
 var memory Memory
@@ -69,7 +84,7 @@ func processCommand(w io.Writer, message Value) error {
 }
 
 func responseFor(command string, args []string) Value {
-	switch command {
+	switch strings.ToUpper(command) {
 	case "PING":
 		return NewSimpleString("PONG")
 	case "ECHO":
@@ -82,7 +97,30 @@ func responseFor(command string, args []string) Value {
 			return NewSimpleError("ERR SET requires key and value")
 		}
 
-		memory.Set(args[0], NewBulkString(args[1]))
+		// Required args
+		key := args[0]
+		entry := Entry{Value: NewBulkString(args[1])}
+
+		// Parse optional args
+		for i := 2; i < len(args); i++ {
+			switch strings.ToUpper(args[i]) {
+			case "PX":
+				if len(args) < i+2 {
+					return NewSimpleError("ERR SET PX option requires an argument")
+				}
+
+				px, error := strconv.ParseInt(args[i+1], 10, 0)
+
+				if error != nil {
+					return NewSimpleError("ERR SET PX option argument must be a positive integer")
+				}
+
+				entry.Expires = true
+				entry.ExpiresAt = time.Now().Add(time.Millisecond * time.Duration(px))
+			}
+		}
+
+		memory.Set(key, entry)
 
 		return NewSimpleString("OK")
 	case "GET":
